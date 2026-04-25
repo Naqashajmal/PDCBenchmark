@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PDC Benchmark System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f5f4f0; --surface: #ffffff; --surface2: #f0efe9;
+      --border: #e2e1da; --border2: #d0cfc7;
+      --text: #1a1917; --text2: #6b6a65; --text3: #9b9a95;
+      --blue: #2563eb; --blue-bg: #eff4ff; --blue-bd: #c7d9fd;
+      --green: #16a34a; --green-bg: #f0fdf4; --green-bd: #bbf7d0;
+      --amber: #d97706; --amber-bg: #fffbeb; --amber-bd: #fde68a;
+      --red: #dc2626; --red-bg: #fef2f2; --red-bd: #fecaca;
+      --radius: 8px;
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.6; }
+
+    .app { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+
+    /* Sidebar */
+    .sidebar { background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+    .sidebar-brand { padding: 20px 18px 14px; border-bottom: 1px solid var(--border); }
+    .brand-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .brand-sub { font-size: 11px; color: var(--text3); margin-top: 2px; font-family: 'DM Mono', monospace; }
+    .status-pill { display: flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 99px; font-size: 11px; font-weight: 500; border: 1px solid var(--border); background: var(--surface2); color: var(--text3); margin: 10px; transition: all .3s; }
+    .status-pill.ok { background: var(--green-bg); border-color: var(--green-bd); color: var(--green); }
+    .status-pill.err { background: var(--red-bg); border-color: var(--red-bd); color: var(--red); }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+    .status-pill.ok .status-dot { animation: pulse-dot 2s ease-in-out infinite; }
+    @keyframes pulse-dot { 0%,100%{opacity:1}50%{opacity:.4} }
+    .sidebar-section { padding: 10px 10px 4px; }
+    .sidebar-label { font-size: 10px; font-weight: 600; letter-spacing: .08em; color: var(--text3); text-transform: uppercase; padding: 0 8px; margin-bottom: 4px; }
+    .nav-item { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 6px; cursor: pointer; color: var(--text2); font-size: 13px; font-weight: 400; transition: all .12s; border: none; background: none; width: 100%; text-align: left; font-family: 'DM Sans', sans-serif; }
+    .nav-item:hover { background: var(--surface2); color: var(--text); }
+    .nav-item.active { background: var(--blue-bg); color: var(--blue); font-weight: 500; }
+    .nav-icon { width: 15px; height: 15px; opacity: .65; flex-shrink: 0; }
+    .nav-item.active .nav-icon { opacity: 1; }
+    .sidebar-bottom { margin-top: auto; padding: 12px 10px; border-top: 1px solid var(--border); }
+    .member-item { display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; }
+    .member-name { font-size: 12px; color: var(--text2); }
+    .member-id { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--text3); background: var(--surface2); padding: 1px 5px; border-radius: 3px; }
+
+    /* Main */
+    .main { padding: 28px 32px; max-width: 900px; }
+    .page-header { margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid var(--border); }
+    .page-title { font-size: 19px; font-weight: 600; letter-spacing: -.02em; }
+    .page-desc { font-size: 13px; color: var(--text2); margin-top: 4px; line-height: 1.6; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Cards */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 1px 3px rgba(0,0,0,.06); margin-bottom: 14px; }
+    .card-header { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+    .card-title { font-size: 13px; font-weight: 600; }
+    .card-body { padding: 16px; }
+    .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+    @media(max-width:680px){ .g2{grid-template-columns:1fr} .g3{grid-template-columns:1fr 1fr} }
+
+    /* Form */
+    .field { margin-bottom: 12px; }
+    .field label { display: block; font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 5px; }
+    select { width: 100%; padding: 7px 30px 7px 10px; border: 1px solid var(--border2); border-radius: 6px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text); background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 11 7'%3E%3Cpath d='M1 1l4.5 4.5L10 1' stroke='%239b9a95' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 10px center; outline: none; appearance: none; cursor: pointer; transition: border-color .15s; }
+    select:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,.08); }
+
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 6px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid transparent; transition: all .12s; }
+    .btn-primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary { background: var(--surface); color: var(--text2); border-color: var(--border2); }
+    .btn-secondary:hover { background: var(--surface2); color: var(--text); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-row { display: flex; gap: 8px; margin-top: 14px; }
+    .spinner { width: 12px; height: 12px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+
+    /* Progress */
+    .prog-row { margin-bottom: 10px; }
+    .prog-meta { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 12px; }
+    .prog-label { color: var(--text2); font-weight: 500; }
+    .prog-val { color: var(--text); font-family: 'DM Mono', monospace; }
+    .prog-track { height: 6px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+    .prog-fill { height: 100%; border-radius: 99px; transition: width .15s ease; }
+    .fill-blue { background: var(--blue); }
+    .fill-green { background: var(--green); }
+
+    /* Stats */
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+    .stat-val { font-size: 22px; font-weight: 600; letter-spacing: -.025em; font-family: 'DM Mono', monospace; line-height: 1; margin-bottom: 5px; color: var(--text); }
+    .stat-val.blue { color: var(--blue); }
+    .stat-val.green { color: var(--green); }
+    .stat-val.amber { color: var(--amber); }
+    .stat-label { font-size: 11px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: .06em; }
+
+    /* Thread vis */
+    .thread-list { display: flex; flex-direction: column; gap: 7px; }
+    .thread-row { display: flex; align-items: center; gap: 10px; }
+    .thread-id { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text3); min-width: 52px; }
+    .thread-track { flex: 1; height: 20px; background: var(--surface2); border-radius: 4px; overflow: hidden; position: relative; }
+    .thread-bar { height: 100%; border-radius: 4px; position: absolute; left: 0; top: 0; display: flex; align-items: center; padding-left: 7px; font-size: 10px; font-weight: 600; color: #fff; transition: width .18s ease; white-space: nowrap; overflow: hidden; }
+    .thread-status { min-width: 48px; text-align: right; font-size: 11px; font-family: 'DM Mono', monospace; }
+    .ts-idle { color: var(--text3); }
+    .ts-running { color: var(--blue); }
+    .ts-done { color: var(--green); }
+
+    /* Log */
+    .log-box { background: #1a1917; border-radius: 6px; padding: 12px; font-family: 'DM Mono', monospace; font-size: 12px; height: 156px; overflow-y: auto; color: #c8c7c2; line-height: 1.7; }
+    .log-box::-webkit-scrollbar { width: 3px; }
+    .log-box::-webkit-scrollbar-thumb { background: #3a3835; border-radius: 2px; }
+    .log-line { display: block; }
+    .log-line.info { color: #60a5fa; }
+    .log-line.success { color: #4ade80; }
+    .log-line.warn { color: #fbbf24; }
+    .log-line.dim { color: #6b6a65; }
+    .log-line.err { color: #f87171; }
+
+    /* Badge */
+    .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 500; }
+    .badge-green { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-bd); }
+    .badge-amber { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-bd); }
+    .badge-red { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-bd); }
+
+    /* Table */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .data-table th { text-align: left; padding: 8px 14px; font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid var(--border); }
+    .data-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text); }
+    .data-table tr:last-child td { border-bottom: none; }
+    .mono { font-family: 'DM Mono', monospace; }
+
+    /* Queue vis */
+    .queue-vis { display: flex; gap: 4px; flex-wrap: wrap; padding: 6px 0; min-height: 40px; }
+    .queue-slot { width: 32px; height: 32px; border-radius: 5px; border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text3); transition: all .25s; }
+    .queue-slot.filled { background: var(--blue-bg); border-color: var(--blue-bd); color: var(--blue); }
+
+    /* Code */
+    .code-block { background: #1a1917; border-radius: 6px; padding: 14px 16px; font-family: 'DM Mono', monospace; font-size: 12px; line-height: 1.85; color: #c8c7c2; overflow-x: auto; }
+    .ck { color: #c084fc; } .ct { color: #67e8f9; } .cc { color: #6b6a65; } .cs { color: #86efac; }
+
+    /* Alert */
+    .alert { padding: 10px 14px; border-radius: 6px; font-size: 13px; line-height: 1.6; margin-bottom: 14px; }
+    .alert-amber { background: var(--amber-bg); border: 1px solid var(--amber-bd); color: #78350f; }
+    .alert-green { background: var(--green-bg); border: 1px solid var(--green-bd); color: #14532d; }
+
+    canvas { width: 100%; display: block; }
+    .empty-note { color: var(--text3); font-size: 13px; padding: 24px 0; text-align: center; }
+
+    code { font-family: 'DM Mono', monospace; font-size: 12px; background: var(--surface2); padding: 1px 6px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-name">PDC Benchmark</div>
+      <div class="brand-sub">Midterm Demo · Group 3</div>
+    </div>
+
+    <div class="status-pill" id="statusPill">
+      <div class="status-dot"></div>
+      <span id="statusText">Connecting...</span>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Benchmarks</div>
+      <button class="nav-item active" onclick="go(this,'benchmark')">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        Sequential vs Parallel
+      </button>
+      <button class="nav-item" onclick="go(this,'matrix')">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+        Matrix Multiply
+      </button>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">PDC Concepts</div>
+      <button class="nav-item" onclick="go(this,'producer')">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"/></svg>
+        Producer–Consumer
+      </button>
+      <button class="nav-item" onclick="go(this,'sync')">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+        Sync &amp; Mutex
+      </button>
+      <button class="nav-item" onclick="go(this,'code')">
+        <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>
+        Code Reference
+      </button>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="sidebar-label" style="padding:0 8px;margin-bottom:8px">Group Members</div>
+      <div class="member-item"><span class="member-name">Naqash Ajmal</span><span class="member-id">098</span></div>
+      <div class="member-item"><span class="member-name">Abdul Rehman Moiz</span><span class="member-id">079</span></div>
+      <div class="member-item"><span class="member-name">Amir Hamza</span><span class="member-id">064</span></div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- ── BENCHMARK ── -->
+    <div class="tab-panel active" id="panel-benchmark">
+      <div class="page-header">
+        <div class="page-title">Sequential vs Parallel Benchmark</div>
+        <div class="page-desc">Counts prime numbers up to N using a single thread, then again using a parallel thread pool. Measures real wall-clock time with <code>System.nanoTime()</code> from the Java backend.</div>
+      </div>
+
+      <div class="g2">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Configuration</span></div>
+          <div class="card-body">
+            <div class="field"><label>Search range (N)</label>
+              <select id="nSel">
+                <option value="200000">200,000 — small</option>
+                <option value="500000" selected>500,000 — medium</option>
+                <option value="1000000">1,000,000 — large</option>
+                <option value="2000000">2,000,000 — huge</option>
+              </select>
+            </div>
+            <div class="field"><label>Thread count</label>
+              <select id="threadSel">
+                <option value="1">1 thread</option>
+                <option value="2">2 threads</option>
+                <option value="4" selected>4 threads</option>
+                <option value="8">8 threads</option>
+              </select>
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-primary" id="runBtn" onclick="runBenchmark()">▶ Run benchmark</button>
+              <button class="btn btn-secondary" onclick="resetBenchmark()">Reset</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Execution log</span></div>
+          <div class="card-body" style="padding:12px"><div class="log-box" id="logBox"></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Progress</span></div>
+        <div class="card-body">
+          <div class="prog-row">
+            <div class="prog-meta"><span class="prog-label">Sequential — 1 thread</span><span class="prog-val" id="seqPct">0%</span></div>
+            <div class="prog-track"><div class="prog-fill fill-blue" id="seqBar" style="width:0%"></div></div>
+          </div>
+          <div class="prog-row" style="margin-bottom:0">
+            <div class="prog-meta"><span class="prog-label">Parallel — <span id="ptLabel">4</span> threads</span><span class="prog-val" id="parPct">0%</span></div>
+            <div class="prog-track"><div class="prog-fill fill-green" id="parBar" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="g2">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Thread activity</span></div>
+          <div class="card-body">
+            <div class="thread-list" id="threadVis"><p class="empty-note">Run benchmark to see thread activity</p></div>
+          </div>
+        </div>
+        <div id="resultsWrap" style="display:none">
+          <div class="g3">
+            <div class="stat-card"><div class="stat-val blue" id="rSeqMs">—</div><div class="stat-label">Sequential ms</div></div>
+            <div class="stat-card"><div class="stat-val green" id="rParMs">—</div><div class="stat-label">Parallel ms</div></div>
+            <div class="stat-card"><div class="stat-val amber" id="rSpeedup">—</div><div class="stat-label">Speedup ×</div></div>
+          </div>
+          <div class="g3">
+            <div class="stat-card"><div class="stat-val" id="rEff">—</div><div class="stat-label">Efficiency %</div></div>
+            <div class="stat-card"><div class="stat-val" id="rPrimes">—</div><div class="stat-label">Primes found</div></div>
+            <div class="stat-card"><div class="stat-val" id="rThreads">—</div><div class="stat-label">Threads used</div></div>
+          </div>
+          <div class="card" style="margin-bottom:0">
+            <div class="card-header"><span class="card-title">Run history</span></div>
+            <div class="card-body" style="padding:12px"><canvas id="chartCanvas" height="90"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── MATRIX ── -->
+    <div class="tab-panel" id="panel-matrix">
+      <div class="page-header">
+        <div class="page-title">Matrix Multiplication</div>
+        <div class="page-desc">Multiplies two N×N matrices. Each thread computes a contiguous slice of rows — clean data decomposition with no shared writes, so no mutex is needed.</div>
+      </div>
+      <div class="g2">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Configuration</span></div>
+          <div class="card-body">
+            <div class="field"><label>Matrix size</label>
+              <select id="matSize">
+                <option value="100">100 × 100</option>
+                <option value="200" selected>200 × 200</option>
+                <option value="300">300 × 300</option>
+                <option value="400">400 × 400</option>
+              </select>
+            </div>
+            <div class="field"><label>Thread count</label>
+              <select id="matThreads">
+                <option value="2">2 threads</option>
+                <option value="4" selected>4 threads</option>
+                <option value="8">8 threads</option>
+              </select>
+            </div>
+            <div class="btn-row"><button class="btn btn-primary" id="matBtn" onclick="runMatrix()">▶ Multiply</button></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Result</span></div>
+          <div class="card-body">
+            <div class="g3" style="margin-bottom:14px">
+              <div class="stat-card"><div class="stat-val blue" id="matSeq">—</div><div class="stat-label">Seq (ms)</div></div>
+              <div class="stat-card"><div class="stat-val green" id="matPar">—</div><div class="stat-label">Par (ms)</div></div>
+              <div class="stat-card"><div class="stat-val amber" id="matSpeedup">—</div><div class="stat-label">Speedup ×</div></div>
+            </div>
+            <div style="font-size:13px;color:var(--text2);line-height:1.7" id="matLog">Run the benchmark to see results.</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Java — row decomposition</span></div>
+        <div class="card-body">
+          <div class="code-block"><span class="cc">// Each thread handles its own rows — no shared writes, no locking needed</span><br>
+            <span class="ck">int</span> rowsPerThread = size / threads;<br>
+            pool.<span class="cs">submit</span>(() -> {<br>
+            &nbsp;&nbsp;<span class="ck">for</span> (<span class="ck">int</span> i = rowFrom; i &lt; rowTo; i++)<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">for</span> (<span class="ck">int</span> j = 0; j &lt; size; j++)<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="ck">for</span> (<span class="ck">int</span> k = 0; k &lt; size; k++)<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;C[i][j] += A[i][k] * B[k][j];<br>
+            });</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PRODUCER-CONSUMER ── -->
+    <div class="tab-panel" id="panel-producer">
+      <div class="page-header">
+        <div class="page-title">Producer–Consumer</div>
+        <div class="page-desc">2 producer threads and 3 consumer threads share a bounded <code>ArrayBlockingQueue</code>. Producers block when the buffer is full; consumers block when it is empty. No manual locking required.</div>
+      </div>
+      <div class="g2">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Configuration</span></div>
+          <div class="card-body">
+            <div class="field"><label>Items to produce</label>
+              <select id="pcItems"><option value="20">20 items</option><option value="40" selected>40 items</option><option value="80">80 items</option></select>
+            </div>
+            <div class="field"><label>Buffer size</label>
+              <select id="pcBuf"><option value="5">5 slots</option><option value="10" selected>10 slots</option><option value="20">20 slots</option></select>
+            </div>
+            <div class="btn-row"><button class="btn btn-primary" id="pcBtn" onclick="runPC()">▶ Run</button></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Buffer state (after run)</span></div>
+          <div class="card-body">
+            <div class="queue-vis" id="queueVis"><p style="color:var(--text3);font-size:12px">Run to see buffer state</p></div>
+            <div class="g2" style="margin-top:12px;gap:8px">
+              <div class="stat-card"><div class="stat-val blue" id="pcProd">—</div><div class="stat-label">Produced</div></div>
+              <div class="stat-card"><div class="stat-val green" id="pcCons">—</div><div class="stat-label">Consumed</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Event log</span></div>
+        <div class="card-body" style="padding:12px"><div class="log-box" id="pcLog"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Java — BlockingQueue</span></div>
+        <div class="card-body">
+          <div class="code-block"><span class="ct">BlockingQueue</span>&lt;<span class="ct">Integer</span>&gt; q = <span class="ck">new</span> <span class="ct">ArrayBlockingQueue</span>&lt;&gt;(bufSize);<br><br>
+            <span class="cc">// Producer — blocks when buffer is full</span><br>
+            q.<span class="cs">put</span>(item);<br><br>
+            <span class="cc">// Consumer — blocks when buffer is empty</span><br>
+            <span class="ck">int</span> item = q.<span class="cs">take</span>();<br><br>
+            <span class="cc">// Poison pill: signals consumers to stop</span><br>
+            q.<span class="cs">put</span>(-1);</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SYNC ── -->
+    <div class="tab-panel" id="panel-sync">
+      <div class="page-header">
+        <div class="page-title">Synchronization &amp; Mutex</div>
+        <div class="page-desc">Runs the same counter increment across multiple threads three ways: no lock (race condition), <code>ReentrantLock</code> (mutex), and <code>AtomicInteger</code> (lock-free CAS). Shows real data corruption.</div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">Configuration</span></div>
+        <div class="card-body">
+          <div class="g2">
+            <div class="field"><label>Thread count</label>
+              <select id="syncThreads"><option value="2">2 threads</option><option value="4" selected>4 threads</option><option value="8">8 threads</option></select>
+            </div>
+            <div class="field"><label>Increments per thread</label>
+              <select id="syncInc"><option value="5000">5,000</option><option value="10000" selected>10,000</option><option value="50000">50,000</option></select>
+            </div>
+          </div>
+          <div class="btn-row"><button class="btn btn-primary" id="syncBtn" onclick="runSync()">▶ Run sync demo</button></div>
+        </div>
+      </div>
+
+      <div id="syncAlert"></div>
+
+      <div class="card" id="syncResultCard" style="display:none">
+        <div class="card-header"><span class="card-title">Results</span></div>
+        <div class="card-body" style="padding:0">
+          <table class="data-table">
+            <thead><tr><th>Method</th><th>Result</th><th>Expected</th><th>Status</th><th>Mechanism</th></tr></thead>
+            <tbody>
+            <tr>
+              <td><strong>Unsafe</strong></td>
+              <td class="mono" id="sUnsafe">—</td>
+              <td class="mono" id="sExpected">—</td>
+              <td id="unsafeStatus">—</td>
+              <td style="color:var(--text3);font-size:12px">No synchronization</td>
+            </tr>
+            <tr>
+              <td><strong>ReentrantLock</strong></td>
+              <td class="mono" id="sSafe">—</td>
+              <td class="mono" id="sExpected2">—</td>
+              <td id="safeStatus">—</td>
+              <td style="color:var(--text3);font-size:12px">Mutex lock / unlock</td>
+            </tr>
+            <tr>
+              <td><strong>AtomicInteger</strong></td>
+              <td class="mono" id="sAtomic">—</td>
+              <td class="mono" id="sExpected3">—</td>
+              <td id="atomicStatus">—</td>
+              <td style="color:var(--text3);font-size:12px">Hardware CAS</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Java — three approaches</span></div>
+        <div class="card-body">
+          <div class="code-block"><span class="cc">// Unsafe — NOT atomic, threads corrupt each other's writes</span><br>
+            <span class="ck">volatile int</span> counter = 0;<br>
+            counter++;  <span class="cc">// read → modify → write: three steps, not one</span><br><br>
+            <span class="cc">// ReentrantLock — only one thread holds the lock at a time</span><br>
+            <span class="ct">ReentrantLock</span> lock = <span class="ck">new</span> <span class="ct">ReentrantLock</span>();<br>
+            lock.<span class="cs">lock</span>();<br>
+            <span class="ck">try</span> { counter++; } <span class="ck">finally</span> { lock.<span class="cs">unlock</span>(); }<br><br>
+            <span class="cc">// AtomicInteger — lock-free, single hardware instruction</span><br>
+            <span class="ct">AtomicInteger</span> c = <span class="ck">new</span> <span class="ct">AtomicInteger</span>(0);<br>
+            c.<span class="cs">incrementAndGet</span>();</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CODE REFERENCE ── -->
+    <div class="tab-panel" id="panel-code">
+      <div class="page-header">
+        <div class="page-title">Code Reference</div>
+        <div class="page-desc">Architecture overview and member responsibilities for the midterm evaluation.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">API endpoints — what Java actually does</span></div>
+        <div class="card-body" style="padding:0">
+          <table class="data-table">
+            <thead><tr><th>Endpoint</th><th>Java mechanism</th></tr></thead>
+            <tbody>
+            <tr><td class="mono">/api/benchmark/sequential</td><td style="font-size:12px;color:var(--text2)">Single-thread prime sieve, System.nanoTime() timing</td></tr>
+            <tr><td class="mono">/api/benchmark/parallel</td><td style="font-size:12px;color:var(--text2)">ExecutorService splits range into T chunks, AtomicInteger accumulates partial counts</td></tr>
+            <tr><td class="mono">/api/benchmark/producer</td><td style="font-size:12px;color:var(--text2)">2 producers + 3 consumers on ArrayBlockingQueue, poison pill shutdown</td></tr>
+            <tr><td class="mono">/api/benchmark/sync</td><td style="font-size:12px;color:var(--text2)">Runs all 3 counter methods in sequence, returns unsafe/safe/atomic results</td></tr>
+            <tr><td class="mono">/api/benchmark/matrix</td><td style="font-size:12px;color:var(--text2)">N×N matrix multiply, row decomposition, no shared writes</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">Member responsibilities</span></div>
+        <div class="card-body" style="padding:0">
+          <table class="data-table">
+            <thead><tr><th>Member</th><th>ID</th><th>Tab</th><th>Explain</th></tr></thead>
+            <tbody>
+            <tr>
+              <td><strong>Naqash Ajmal</strong></td><td class="mono">098</td>
+              <td>Sequential vs Parallel</td>
+              <td style="font-size:12px;color:var(--text2)">ExecutorService, thread pool division, AtomicInteger, speedup formula</td>
+            </tr>
+            <tr>
+              <td><strong>Abdul Rehman Moiz</strong></td><td class="mono">079</td>
+              <td>Producer–Consumer</td>
+              <td style="font-size:12px;color:var(--text2)">BlockingQueue, put/take blocking, poison pill, bounded buffer</td>
+            </tr>
+            <tr>
+              <td><strong>Amir Hamza</strong></td><td class="mono">064</td>
+              <td>Sync &amp; Mutex</td>
+              <td style="font-size:12px;color:var(--text2)">Race condition, ReentrantLock, AtomicInteger CAS, why volatile isn't enough</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  const API = 'http://localhost:8080';
+  let speedupHistory = [];
+  let benchRunning = false;
+
+  function go(btn, panel) {
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + panel).classList.add('active');
+  }
+
+  async function pingServer() {
+    const pill = document.getElementById('statusPill');
+    const txt  = document.getElementById('statusText');
+    try {
+      const r = await fetch(`${API}/api/benchmark/sequential?n=1000`, { signal: AbortSignal.timeout(3000) });
+      if (r.ok) { pill.className = 'status-pill ok'; txt.textContent = 'Java server connected'; return; }
+    } catch(e) {}
+    pill.className = 'status-pill err'; txt.textContent = 'Server offline';
+  }
+
+  function log(id, msg, cls = 'dim') {
+    const box = document.getElementById(id);
+    const s = document.createElement('span');
+    s.className = 'log-line ' + cls;
+    s.textContent = `[${new Date().toLocaleTimeString('en',{hour12:false})}]  ${msg}\n`;
+    box.appendChild(s); box.scrollTop = box.scrollHeight;
+  }
+  function clearLog(id) { document.getElementById(id).innerHTML = ''; }
+  function setBar(barId, pctId, pct) {
+    document.getElementById(barId).style.width = pct + '%';
+    document.getElementById(pctId).textContent = Math.round(pct) + '%';
+  }
+
+  const COLORS = ['#2563eb','#16a34a','#d97706','#9333ea','#dc2626','#0891b2','#65a30d','#c026d3'];
+
+  function buildThreads(n) {
+    const vis = document.getElementById('threadVis'); vis.innerHTML = '';
+    for (let i = 0; i < n; i++) {
+      const row = document.createElement('div'); row.className = 'thread-row';
+      row.innerHTML = `<span class="thread-id">T-${String(i).padStart(3,'0')}</span>
+      <div class="thread-track"><div class="thread-bar" id="tb${i}" style="width:0%;background:${COLORS[i%COLORS.length]}"></div></div>
+      <span class="thread-status ts-idle" id="ts${i}">idle</span>`;
+      vis.appendChild(row);
+    }
+  }
+  function setThread(i, pct, status) {
+    const tb = document.getElementById('tb'+i), ts = document.getElementById('ts'+i);
+    if (!tb || !ts) return;
+    tb.style.width = pct + '%'; tb.textContent = pct > 20 ? Math.round(pct)+'%' : '';
+    ts.textContent = status; ts.className = 'thread-status ts-' + status;
+  }
+  function animateBar(barId, pctId, ms, top = 94) {
+    let i = 0; const steps = 35;
+    const iv = setInterval(() => { i++; setBar(barId, pctId, i/steps*top); if (i >= steps) clearInterval(iv); }, ms/steps);
+    return iv;
+  }
+  function animateThreads(n, ms) {
+    buildThreads(n); const h = [];
+    for (let t = 0; t < n; t++) {
+      const tid = t;
+      const tout = setTimeout(() => {
+        setThread(tid, 0, 'running'); let s = 0;
+        const iv = setInterval(() => { s++; setThread(tid, s/22*100, 'running'); if (s>=22){clearInterval(iv); setThread(tid,100,'done');} }, ms/22);
+        h.push(iv);
+      }, tid * 70); h.push(tout);
+    } return h;
+  }
+
+  async function runBenchmark() {
+    if (benchRunning) return; benchRunning = true;
+    const n = document.getElementById('nSel').value;
+    const threads = document.getElementById('threadSel').value;
+    document.getElementById('ptLabel').textContent = threads;
+    const btn = document.getElementById('runBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Running...';
+    document.getElementById('resultsWrap').style.display = 'none';
+    clearLog('logBox'); setBar('seqBar','seqPct',0); setBar('parBar','parPct',0);
+    log('logBox', `Prime sieve · N=${parseInt(n).toLocaleString()} · ${threads} threads`, 'info');
+
+    log('logBox','Starting sequential...','info');
+    const estSeq = parseInt(n)/500000*900;
+    const a1 = animateBar('seqBar','seqPct',estSeq);
+    let seqData;
+    try {
+      const r = await fetch(`${API}/api/benchmark/sequential?n=${n}`);
+      seqData = await r.json(); clearInterval(a1); setBar('seqBar','seqPct',100);
+      log('logBox', `Sequential done · ${seqData.primes.toLocaleString()} primes · ${seqData.timeMs.toFixed(2)} ms`, 'success');
+    } catch(e) {
+      clearInterval(a1);
+      log('logBox','Cannot reach Java server. Is BenchmarkServer running?','err');
+      btn.disabled = false; btn.textContent = '▶ Run benchmark'; benchRunning = false; return;
+    }
+
+    await new Promise(r => setTimeout(r, 200));
+    log('logBox', `Spawning ${threads} threads via ExecutorService...`, 'info');
+    const estPar = estSeq/(parseInt(threads)*0.65);
+    const a2 = animateBar('parBar','parPct',estPar);
+    const thrH = animateThreads(parseInt(threads), estPar);
+    let parData;
+    try {
+      const r = await fetch(`${API}/api/benchmark/parallel?n=${n}&threads=${threads}`);
+      parData = await r.json(); clearInterval(a2); thrH.forEach(h => clearTimeout(h));
+      setBar('parBar','parPct',100);
+      for (let t = 0; t < parseInt(threads); t++) setThread(t, 100, 'done');
+      parData.threadDetail.forEach(td => log('logBox', `T-${String(td.id).padStart(3,'0')} · ${td.primes.toLocaleString()} primes · ${td.timeMs.toFixed(2)} ms`, 'dim'));
+      log('logBox', `Parallel done · ${parData.primes.toLocaleString()} primes · ${parData.timeMs.toFixed(2)} ms`, 'success');
+    } catch(e) { log('logBox','Error fetching parallel result','err'); benchRunning = false; return; }
+
+    const speedup = seqData.timeMs / parData.timeMs;
+    const eff = speedup / parseInt(threads) * 100;
+    log('logBox', `Speedup ${speedup.toFixed(2)}×  ·  Efficiency ${eff.toFixed(1)}%`, 'warn');
+
+    document.getElementById('rSeqMs').textContent  = seqData.timeMs.toFixed(1);
+    document.getElementById('rParMs').textContent  = parData.timeMs.toFixed(1);
+    document.getElementById('rSpeedup').textContent = speedup.toFixed(2) + '×';
+    document.getElementById('rEff').textContent    = eff.toFixed(1) + '%';
+    document.getElementById('rPrimes').textContent = parData.primes.toLocaleString();
+    document.getElementById('rThreads').textContent = threads;
+    document.getElementById('resultsWrap').style.display = 'block';
+
+    speedupHistory.push({ seq: seqData.timeMs, par: parData.timeMs });
+    if (speedupHistory.length > 5) speedupHistory.shift();
+    setTimeout(drawChart, 80);
+    btn.disabled = false; btn.textContent = '▶ Run benchmark'; benchRunning = false;
+  }
+
+  function resetBenchmark() {
+    setBar('seqBar','seqPct',0); setBar('parBar','parPct',0); clearLog('logBox');
+    document.getElementById('resultsWrap').style.display = 'none';
+    document.getElementById('threadVis').innerHTML = '<p class="empty-note">Run benchmark to see thread activity</p>';
+  }
+
+  async function runMatrix() {
+    const size = document.getElementById('matSize').value;
+    const threads = document.getElementById('matThreads').value;
+    const btn = document.getElementById('matBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Computing...';
+    document.getElementById('matLog').textContent = `Computing ${size}×${size} matrix with ${threads} threads...`;
+    try {
+      const r = await fetch(`${API}/api/benchmark/matrix?size=${size}&threads=${threads}`);
+      const d = await r.json();
+      document.getElementById('matSeq').textContent = d.seqMs.toFixed(1);
+      document.getElementById('matPar').textContent = d.parMs.toFixed(1);
+      document.getElementById('matSpeedup').textContent = d.speedup.toFixed(2) + '×';
+      document.getElementById('matLog').innerHTML = `<strong>${size}×${size}</strong> matrix done. Sequential: <strong>${d.seqMs.toFixed(1)} ms</strong> → Parallel (${threads} threads): <strong>${d.parMs.toFixed(1)} ms</strong> → Speedup: <strong>${d.speedup.toFixed(2)}×</strong>. Each thread owns ${Math.ceil(size/threads)} rows independently — no shared writes, no locking required.`;
+    } catch(e) { document.getElementById('matLog').textContent = 'Error: Java server not reachable.'; }
+    btn.disabled = false; btn.textContent = '▶ Multiply';
+  }
+
+  async function runPC() {
+    const items = document.getElementById('pcItems').value;
+    const buf   = document.getElementById('pcBuf').value;
+    const btn   = document.getElementById('pcBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Running...';
+    clearLog('pcLog');
+    log('pcLog', `2 producers · 3 consumers · buffer=${buf} · total=${items} items`, 'info');
+    try {
+      const r = await fetch(`${API}/api/benchmark/producer?items=${items}&buf=${buf}`);
+      const d = await r.json();
+      document.getElementById('pcProd').textContent = d.produced;
+      document.getElementById('pcCons').textContent = d.consumed;
+      const vis = document.getElementById('queueVis'); vis.innerHTML = '';
+      for (let i = 0; i < d.bufferSize; i++) {
+        const s = document.createElement('div');
+        s.className = 'queue-slot' + (i < 3 ? ' filled' : '');
+        s.textContent = i < 3 ? (i+1) : '·'; vis.appendChild(s);
+      }
+      d.events.slice(0,35).forEach(e => log('pcLog', e, e.startsWith('P') ? 'info' : 'success'));
+      log('pcLog', `Done · produced=${d.produced} · consumed=${d.consumed} · ${d.timeMs.toFixed(1)} ms`, 'warn');
+    } catch(e) { log('pcLog','Error: Java server not reachable.','err'); }
+    btn.disabled = false; btn.textContent = '▶ Run';
+  }
+
+  async function runSync() {
+    const threads = document.getElementById('syncThreads').value;
+    const inc     = document.getElementById('syncInc').value;
+    const btn     = document.getElementById('syncBtn');
+    btn.disabled  = true; btn.innerHTML = '<span class="spinner"></span> Running...';
+    document.getElementById('syncAlert').innerHTML = '';
+    try {
+      const r = await fetch(`${API}/api/benchmark/sync?threads=${threads}&inc=${inc}`);
+      const d = await r.json();
+      const exp = d.expected.toLocaleString();
+      document.getElementById('sExpected').textContent  = exp;
+      document.getElementById('sExpected2').textContent = exp;
+      document.getElementById('sExpected3').textContent = exp;
+      document.getElementById('sUnsafe').textContent  = d.unsafeResult.toLocaleString();
+      document.getElementById('sSafe').textContent    = d.safeResult.toLocaleString();
+      document.getElementById('sAtomic').textContent  = d.atomicResult.toLocaleString();
+      const corrupt = d.unsafeResult !== d.expected;
+      document.getElementById('unsafeStatus').innerHTML = corrupt ? '<span class="badge badge-red">Corrupted</span>' : '<span class="badge badge-amber">Got lucky</span>';
+      document.getElementById('safeStatus').innerHTML   = '<span class="badge badge-green">Correct</span>';
+      document.getElementById('atomicStatus').innerHTML = '<span class="badge badge-green">Correct</span>';
+      document.getElementById('syncResultCard').style.display = 'block';
+      const alertEl = document.getElementById('syncAlert');
+      alertEl.innerHTML = corrupt
+              ? `<div class="alert alert-amber">Race condition detected — the unsafe counter lost <strong>${d.unsafeError.toLocaleString()}</strong> increments (${((d.unsafeError/d.expected)*100).toFixed(1)}% data loss). Multiple threads read the same stale value simultaneously and overwrote each other's writes.</div>`
+              : `<div class="alert alert-green">No corruption this run. Try increasing increments to 50,000 or threads to 8 to make the race condition appear.</div>`;
+    } catch(e) {
+      document.getElementById('syncAlert').innerHTML = '<div class="alert alert-amber">Error: Java server not reachable.</div>';
+    }
+    btn.disabled = false; btn.textContent = '▶ Run sync demo';
+  }
+
+  function drawChart() {
+    const canvas = document.getElementById('chartCanvas');
+    if (!canvas || speedupHistory.length < 1) return;
+    const dpr = window.devicePixelRatio || 1;
+    const W = canvas.offsetWidth, H = 90;
+    canvas.width = W*dpr; canvas.height = H*dpr;
+    const ctx = canvas.getContext('2d'); ctx.scale(dpr, dpr);
+    ctx.clearRect(0,0,W,H);
+    const pad = {t:8,b:20,l:42,r:8};
+    const cw = W-pad.l-pad.r, ch = H-pad.t-pad.b;
+    const n = speedupHistory.length;
+    const maxV = Math.max(...speedupHistory.flatMap(d=>[d.seq,d.par]), 50);
+    ctx.strokeStyle = '#e2e1da'; ctx.lineWidth = 1;
+    for (let i=0;i<=3;i++) {
+      const y = pad.t+ch*i/3;
+      ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(pad.l+cw,y); ctx.stroke();
+      ctx.fillStyle='#9b9a95'; ctx.font='9px DM Mono,monospace';
+      ctx.fillText(Math.round(maxV*(1-i/3)), 2, y+3);
+    }
+    const xStep = n>1 ? cw/(n-1) : cw/2;
+    function line(key, color) {
+      ctx.strokeStyle=color; ctx.lineWidth=2; ctx.lineJoin='round'; ctx.lineCap='round';
+      ctx.beginPath();
+      speedupHistory.forEach((d,i)=>{ const x=pad.l+(n>1?i*xStep:cw/2), y=pad.t+ch*(1-d[key]/maxV); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+      ctx.stroke();
+      speedupHistory.forEach((d,i)=>{ const x=pad.l+(n>1?i*xStep:cw/2), y=pad.t+ch*(1-d[key]/maxV); ctx.beginPath(); ctx.arc(x,y,3,0,Math.PI*2); ctx.fillStyle=color; ctx.fill(); });
+    }
+    line('seq','#2563eb'); line('par','#16a34a');
+    ctx.font='9px DM Mono,monospace';
+    ctx.fillStyle='#2563eb'; ctx.fillText('Seq', pad.l+cw-46, pad.t+10);
+    ctx.fillStyle='#16a34a'; ctx.fillText('Par', pad.l+cw-46, pad.t+22);
+    ctx.fillStyle='#9b9a95';
+    speedupHistory.forEach((_,i)=>{ const x=pad.l+(n>1?i*xStep:cw/2); ctx.fillText('R'+(i+1), x-5, H-4); });
+  }
+
+  pingServer();
+  setInterval(pingServer, 10000);
+</script>
+</body>
+</html>
