@@ -18,7 +18,6 @@ import java.util.concurrent.locks.*;
  *
  * Compile:  javac BenchmarkServer.java
  * Run:      java BenchmarkServer
- * Open:     http://localhost:8080
  */
 public class BenchmarkServer {
 
