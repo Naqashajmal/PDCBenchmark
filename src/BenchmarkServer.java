@@ -22,7 +22,8 @@ import java.util.concurrent.locks.*;
  */
 public class BenchmarkServer {
 
-    static final int PORT = 8080;
+    //static final int PORT = 8080;
+    static final int PORT = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
 
     public static void main(String[] args) throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
